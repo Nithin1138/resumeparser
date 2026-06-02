@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import time
-from parser import parse_resume, parse_text
+from parser import parse_resume
 
 app = FastAPI(
     title="Resume Parser API",
@@ -33,19 +33,33 @@ def health():
 
 @app.post("/parse", tags=["Resume"])
 async def parse(
-    file: str,
+    file: UploadFile = File(..., description="Resume file (PDF or DOCX, max 5MB)"),
 ):
     """
-    Upload a resume string and get back structured JSON with:
+    Upload a resume file (PDF or DOCX) and get back structured JSON with:
     - name, email, phone, LinkedIn, GitHub
     - skills list
     - years of experience
     - sections: summary, experience, education, projects, certifications
     """
 
+    # Validate file size (5MB max)
+    MAX_SIZE = 5 * 1024 * 1024
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Max size is 5MB.")
+
+    # Validate file type
+    allowed = (".pdf", ".docx", ".doc")
+    if not file.filename.lower().endswith(allowed):
+        raise HTTPException(
+            status_code=415,
+            detail="Unsupported file type. Upload PDF or DOCX only.",
+        )
+
     start = time.time()
     try:
-        result = parse_text(file)
+        result = parse_resume(file_bytes, file.filename)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -56,6 +70,7 @@ async def parse(
     return JSONResponse({
         "success": True,
         "processing_time_seconds": elapsed,
+        "filename": file.filename,
         "data": result,
     })
 

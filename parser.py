@@ -125,7 +125,16 @@ def extract_years_experience(text: str) -> int | None:
 
 # ── Main parse function ──────────────────────────────────────────────────────
 
-def parse_text(text: str) -> dict:
+def parse_resume(file_bytes: bytes, filename: str) -> dict:
+    filename_lower = filename.lower()
+
+    if filename_lower.endswith(".pdf"):
+        text = extract_text_from_pdf(file_bytes)
+    elif filename_lower.endswith((".docx", ".doc")):
+        text = extract_text_from_docx(file_bytes)
+    else:
+        raise ValueError("Unsupported file type. Upload PDF or DOCX.")
+
     sections = extract_sections(text)
 
     return {
@@ -145,16 +154,3 @@ def parse_text(text: str) -> dict:
         },
         "raw_text_length": len(text),
     }
-
-
-def parse_resume(file_bytes: bytes, filename: str) -> dict:
-    filename_lower = filename.lower()
-
-    if filename_lower.endswith(".pdf"):
-        text = extract_text_from_pdf(file_bytes)
-    elif filename_lower.endswith((".docx", ".doc")):
-        text = extract_text_from_docx(file_bytes)
-    else:
-        raise ValueError("Unsupported file type. Upload PDF or DOCX.")
-
-    return parse_text(text)
